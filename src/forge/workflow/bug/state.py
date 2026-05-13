@@ -53,6 +53,7 @@ def create_initial_bug_state(ticket_key: str, **kwargs: Any) -> BugState:
         "fork_repo": None,
         "merge_conflicts": [],
         "local_review_attempts": 0,
+        "forge_artifacts": {},
         "tdd_approach": False,
         "ci_status": None,
         "current_pr_url": None,

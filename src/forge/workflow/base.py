@@ -53,6 +53,7 @@ class PRIntegrationState(TypedDict, total=False):
     fork_repo: str | None
     merge_conflicts: list[str]
     local_review_attempts: int
+    forge_artifacts: dict[str, dict[str, str]]
 
 
 class CIIntegrationState(TypedDict, total=False):
