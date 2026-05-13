@@ -12,10 +12,14 @@ from forge.integrations.github.client import GitHubClient
 from forge.integrations.jira.client import JiraClient
 from forge.models.workflow import ForgeLabel
 from forge.prompts import load_prompt
+from forge.sandbox import ContainerRunner
 from forge.workflow.feature.state import FeatureState as WorkflowState
 from forge.workflow.nodes.code_review import run_post_change_review, sync_pr_description
 from forge.workflow.nodes.workspace_setup import prepare_workspace
 from forge.workflow.utils import update_state_timestamp
+from forge.workspace.artifacts import harvest_forge_artifacts
+from forge.workspace.git_ops import GitOperations
+from forge.workspace.manager import Workspace
 
 logger = logging.getLogger(__name__)
 
@@ -253,10 +257,6 @@ async def attempt_ci_fix(state: WorkflowState) -> WorkflowState:
     attempt = state.get("ci_fix_attempts", 1)
 
     try:
-        from forge.sandbox import ContainerRunner
-        from forge.workspace.git_ops import GitOperations
-        from forge.workspace.manager import Workspace
-
         workspace_path, _ = prepare_workspace(state)
         state = {**state, "workspace_path": workspace_path}
 
@@ -395,6 +395,10 @@ async def attempt_ci_fix(state: WorkflowState) -> WorkflowState:
                 pr_number=state.get("current_pr_number"),
                 attempt=attempt,
             )
+
+        state = harvest_forge_artifacts(
+            workspace_path, state.get("current_repo", ""), ["handoff.md", "fix-plan.md"], state
+        )
 
         return update_state_timestamp(
             {
