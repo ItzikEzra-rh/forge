@@ -217,9 +217,7 @@ async def implement_review(state: WorkflowState) -> WorkflowState:
                 repo_name=current_repo,
             )
 
-            state = harvest_forge_artifacts(
-                workspace_path, current_repo, ["handoff.md"], state
-            )
+            state = harvest_forge_artifacts(workspace_path, current_repo, ["handoff.md"], state)
 
             # Commit any uncommitted changes the container left
             if git.has_uncommitted_changes():

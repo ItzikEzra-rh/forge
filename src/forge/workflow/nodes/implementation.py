@@ -143,9 +143,7 @@ async def implement_task(state: WorkflowState) -> WorkflowState:
         if result.success:
             logger.info(f"Container completed successfully for {current_task}")
 
-            state = harvest_forge_artifacts(
-                workspace_path, current_repo, ["handoff.md"], state
-            )
+            state = harvest_forge_artifacts(workspace_path, current_repo, ["handoff.md"], state)
 
             # Track implemented tasks
             implemented = state.get("implemented_tasks", [])
