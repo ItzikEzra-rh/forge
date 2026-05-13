@@ -15,6 +15,7 @@ from forge.workflow.feature.state import FeatureState as WorkflowState
 from forge.workflow.nodes.code_review import run_post_change_review, sync_pr_description
 from forge.workflow.nodes.workspace_setup import prepare_workspace
 from forge.workflow.utils import set_paused, update_state_timestamp
+from forge.workspace.artifacts import harvest_forge_artifacts
 
 logger = logging.getLogger(__name__)
 
@@ -169,6 +170,11 @@ async def implement_review(state: WorkflowState) -> WorkflowState:
             repo_name=current_repo,
         )
 
+        # Harvest Phase 1 outputs so they survive if the workspace is recreated later.
+        state = harvest_forge_artifacts(
+            workspace_path, current_repo, ["review-plan.md", "review-objections.md"], state
+        )
+
         # ── Check for objections ──────────────────────────────────────────────
         objections_path = Path(workspace_path) / _REVIEW_OBJECTIONS_FILE
         if objections_path.exists():
@@ -209,6 +215,10 @@ async def implement_review(state: WorkflowState) -> WorkflowState:
                 ticket_key=ticket_key,
                 task_key=f"{ticket_key}-review-fix",
                 repo_name=current_repo,
+            )
+
+            state = harvest_forge_artifacts(
+                workspace_path, current_repo, ["handoff.md"], state
             )
 
             # Commit any uncommitted changes the container left
