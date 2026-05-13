@@ -7,6 +7,7 @@ from typing import Any
 from forge.config import get_settings
 from forge.workflow.feature.state import FeatureState as WorkflowState
 from forge.workflow.utils import update_state_timestamp
+from forge.workspace.artifacts import restore_forge_artifacts
 from forge.workspace.git_ops import GitOperations
 from forge.workspace.guardrails import GuardrailsLoader
 from forge.workspace.manager import Workspace, WorkspaceManager
@@ -71,6 +72,7 @@ def prepare_workspace(
     git.clone()
     git.add_fork_remote(fork_owner, fork_repo)
     git.checkout_branch(branch_name, remote="fork")
+    restore_forge_artifacts(workspace_obj.path, current_repo, state)
     logger.info(f"Workspace recreated at {workspace_obj.path} for {ticket_key}")
     return str(workspace_obj.path), git
 
@@ -181,6 +183,7 @@ async def setup_workspace(state: WorkflowState) -> WorkflowState:
         forge_dir = workspace.path / ".forge"
         forge_dir.mkdir(exist_ok=True)
         (forge_dir / "history").mkdir(exist_ok=True)
+        restore_forge_artifacts(workspace.path, current_repo, state)
 
         # Ensure .forge/ is in .gitignore to prevent accidental commits
         gitignore_path = workspace.path / ".gitignore"
