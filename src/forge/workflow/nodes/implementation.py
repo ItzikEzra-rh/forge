@@ -19,6 +19,7 @@ from forge.integrations.jira.client import JiraClient
 from forge.sandbox import ContainerRunner
 from forge.workflow.feature.state import FeatureState as WorkflowState
 from forge.workflow.utils import update_state_timestamp
+from forge.workspace.artifacts import harvest_forge_artifacts
 from forge.workspace.git_ops import GitOperations
 from forge.workspace.manager import Workspace
 
@@ -141,6 +142,10 @@ async def implement_task(state: WorkflowState) -> WorkflowState:
 
         if result.success:
             logger.info(f"Container completed successfully for {current_task}")
+
+            state = harvest_forge_artifacts(
+                workspace_path, current_repo, ["handoff.md"], state
+            )
 
             # Track implemented tasks
             implemented = state.get("implemented_tasks", [])
