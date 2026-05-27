@@ -297,6 +297,8 @@ class OrchestratorWorker:
                     "rebase_pr",
                 )
 
+                error_before_invoke = updated_values.get("last_error")
+
                 if was_errored or needs_fresh_invoke:
                     logger.info(
                         f"{'Retrying' if was_errored else 'Re-invoking'} workflow "
@@ -308,6 +310,8 @@ class OrchestratorWorker:
                     await compiled_workflow.aupdate_state(config, updated_values)
                     result = await compiled_workflow.ainvoke(None, config=config)
             else:
+                error_before_invoke = None
+
                 # New workflow - build initial state
                 state = self._build_initial_state(message)
                 logger.info(f"Starting new workflow for {ticket_key}")
@@ -326,6 +330,12 @@ class OrchestratorWorker:
                 f"final node: {final_node}, "
                 f"paused: {is_paused}"
             )
+
+            # Report errors to Jira — only if the error is new (not carried
+            # over from a previous invocation that already reported it).
+            last_error = result.get("last_error")
+            if last_error and not is_paused and last_error != error_before_invoke:
+                await self._post_error_to_jira(ticket_key, final_node, last_error)
 
             # Record workflow completed metric (only if not paused - paused means waiting for approval)
             if not is_paused:
@@ -961,6 +971,26 @@ class OrchestratorWorker:
                 await jira.close()
         except Exception as e:
             logger.warning(f"Failed to post rebase feedback: {e}")
+
+    async def _post_error_to_jira(self, ticket_key: str, node: str, error: str) -> None:
+        """Post a Jira comment when a workflow node fails.
+
+        Called centrally after every workflow invocation so individual nodes
+        don't need their own error-reporting logic.
+        """
+        try:
+            jira = JiraClient()
+            error_preview = error[:300] if error else "Unknown error"
+            comment = (
+                f"Workflow encountered an error at *{node}*:\n\n"
+                f"{{code}}{error_preview}{{code}}\n\n"
+                f"Forge will retry automatically. If the problem persists, "
+                f"add the label `forge:retry` to restart from this step."
+            )
+            await jira.add_comment(ticket_key, comment)
+            await jira.close()
+        except Exception as e:
+            logger.warning(f"Failed to post error comment to {ticket_key}: {e}")
 
     async def _post_terminal_error_comment(self, ticket_key: str, error: str) -> None:
         """Post a comment explaining how to retry a terminal error.
